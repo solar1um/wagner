@@ -92,6 +92,16 @@ wagner/
 - Drag points on the power curve graph instead of typing numbers
 - Orange dot on a category = unsaved changes there
 
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/photo_1_2026-06-26_02-11-10.jpg" width="48%">
+  <img src="screenshots/photo_2_2026-06-26_02-11-10.jpg" width="48%">
+  <img src="screenshots/photo_3_2026-06-26_02-11-10.jpg" width="48%">
+  <img src="screenshots/photo_4_2026-06-26_02-11-10.jpg" width="48%">
+  <img src="screenshots/photo_5_2026-06-26_02-11-10.jpg" width="48%">
+</p>
+
 ## License
 
 GPL-2.0
