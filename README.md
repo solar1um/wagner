@@ -23,7 +23,7 @@ In the Engine tab, see real-time power and torque updated as you edit the curve 
 
 ## Quick Start
 
-1. Download `Wagner.exe` from [Releases](https://github.com/wagnerbtc/wagner/releases)
+1. Download `Wagner.exe` from [Releases](https://github.com/solar1um/wagner/releases)
 2. Double-click `Wagner.exe`
 3. Open any `data.acd` (drag & drop works)
 4. Edit, save
@@ -40,7 +40,7 @@ Right-click integration available on first run.
 Requirements: Python 3.10+, Windows.
 
 ```
-git clone https://github.com/wagnerbtc/wagner.git
+git clone https://github.com/solar1um/wagner.git
 cd wagner
 build.bat
 ```
