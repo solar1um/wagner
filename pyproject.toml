@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wagner"
+version = "1.0.0"
+description = "Assetto Corsa car data editor"
+requires-python = ">=3.10"
+dependencies = [
+    "acd",
+    "flask>=3.0",
+    "pywebview>=6.0",
+]
+license = {text = "GPL-2.0"}
+
+[project.scripts]
+wagner = "wagner.app:main"
+
+[tool.setuptools.packages.find]
+include = ["wagner*"]

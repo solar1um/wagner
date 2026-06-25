@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wagner</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --card:#161b22;--accent:#f85149;--accent-dim:rgba(248,81,73,0.12);
+  --text:#e6edf3;--text2:#8b949e;--border:#30363d;
+  --success:#3fb950;--warn:#d29922;
+  --input-bg:#0d1117;--radius:6px;
+  --font-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'SF Mono',Monaco,Menlo,Consolas,monospace;
+}
+body{font-family:var(--font-ui);background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px;line-height:1.5}
+/* Topbar */
+#topbar{display:flex;align-items:center;padding:0 16px;background:var(--bg2);border-bottom:1px solid var(--border);height:44px;gap:12px;flex-shrink:0}
+#topbar .brand{font-weight:700;font-size:14px;color:var(--accent);white-space:nowrap;letter-spacing:-0.3px}
+#topbar .file-path{flex:1;font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono)}
+#topbar .info-badges{display:flex;gap:6px;font-size:10px;align-items:center;flex-shrink:0}
+.badge{background:var(--bg3);padding:2px 8px;border-radius:10px;color:var(--text);white-space:nowrap;font-weight:500}
+.badge.change{color:var(--warn)}
+.tb-btn{padding:4px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;cursor:pointer;background:var(--bg3);color:var(--text2);font-family:var(--font-ui);transition:all .15s;height:28px;white-space:nowrap}
+.tb-btn:hover{background:var(--border);color:var(--text)}
+.tb-btn.tb-save{background:var(--success);color:#fff;border-color:var(--success);font-weight:600}
+.tb-btn.tb-save:hover{filter:brightness(1.15)}
+.tb-btn.tb-support{background:var(--accent-dim);color:var(--accent);border-color:var(--accent);font-weight:600}
+.tb-btn.tb-danger:hover{color:var(--accent);border-color:var(--accent)}
+/* Main layout */
+#main{display:flex;flex:1;overflow:hidden}
+#catnav{width:170px;background:var(--bg2);border-right:1px solid var(--border);display:none;flex-direction:column;padding:8px 0;overflow-y:auto;flex-shrink:0}
+.cat-btn{display:flex;align-items:center;gap:10px;padding:9px 14px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:var(--font-ui);transition:all .15s;border-left:3px solid transparent;text-align:left;width:100%;position:relative}
+.cat-btn:hover{background:var(--bg3);color:var(--text)}
+.cat-btn.active{background:var(--accent-dim);color:var(--accent);border-left-color:var(--accent);font-weight:600}
+.cat-btn .cat-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
+.cat-btn .cat-label{flex:1}
+.cat-btn .cat-dot{width:7px;height:7px;border-radius:50%;background:var(--warn);flex-shrink:0;display:none}
+.cat-btn.has-changes .cat-dot{display:block}
+#content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#editor-area{flex:1;overflow-y:auto;padding:20px 24px}
+/* Welcome */
+#welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--text2);text-align:center}
+#welcome .welcome-icon{font-size:56px;margin-bottom:4px}
+#welcome h2{color:var(--text);font-size:22px;font-weight:700}
+#welcome p{font-size:13px;max-width:380px;line-height:1.6}
+#welcome .drop-zone{border:2px dashed var(--border);border-radius:10px;padding:32px 48px;transition:.2s;cursor:pointer}
+#welcome .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:var(--accent-dim)}
+#welcome .drop-zone p{font-size:13px;margin:0}
+#welcome .btn-open{padding:10px 28px;border-radius:var(--radius);font-size:13px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-family:var(--font-ui);font-weight:600;transition:all .15s}
+#welcome .btn-open:hover{filter:brightness(1.1)}
+/* Category header */
+.cat-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.cat-header .cat-title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+.cat-header .cat-files{font-size:11px;color:var(--text2)}
+/* Summary stats */
+.stats-row{display:flex;gap:12px;margin-bottom:16px}
+.stat-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;text-align:center}
+.stat-card .stat-label{font-size:10px;text-transform:uppercase;color:var(--text2);letter-spacing:0.5px;margin-bottom:4px}
+.stat-card .stat-value{font-size:22px;font-weight:700;color:var(--text)}
+.stat-card .stat-unit{font-size:11px;color:var(--text2);font-weight:400}
+/* Cards & sections */
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden}
+.card-header{padding:9px 14px;background:var(--bg3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.card-header .card-file{color:var(--text);text-transform:none;letter-spacing:0;font-size:12px;font-weight:400}
+.card-body{padding:4px 0}
+.card-body.flat{padding:14px;display:flex;gap:12px;flex-wrap:wrap}
+/* Param row */
+.param-row{display:flex;align-items:center;padding:7px 14px;gap:10px;transition:background .1s}
+.param-row:hover{background:rgba(255,255,255,0.02)}
+.param-row .param-name{font-size:11px;color:var(--text2);min-width:160px;font-family:var(--font-mono)}
+.param-row input{flex:1;max-width:220px;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:var(--font-mono);transition:border-color .15s}
+.param-row input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px rgba(248,81,73,0.2)}
+.param-row input.changed{border-color:var(--warn);background:rgba(210,153,34,0.08)}
+.param-row .unit{font-size:10px;color:var(--text2);min-width:40px;text-align:right;font-family:var(--font-mono)}
+/* LUT editor */
+.lut-editor-wrap{display:flex;gap:0;min-height:220px}
+.lut-table-wrap{flex:0 0 280px;max-height:350px;overflow-y:auto;border-right:1px solid var(--border)}
+.lut-table-wrap table{width:100%;border-collapse:collapse}
+.lut-table-wrap th,.lut-table-wrap td{padding:5px 10px;text-align:center;font-size:11px;border-bottom:1px solid rgba(48,54,61,0.5)}
+.lut-table-wrap th{background:var(--bg3);color:var(--text2);font-size:10px;text-transform:uppercase;position:sticky;top:0;z-index:1}
+.lut-table-wrap td input{width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:11px;text-align:center;font-family:var(--font-mono)}
+.lut-table-wrap td input:focus{border-color:var(--accent);outline:none}
+.lut-table-wrap .btn-del{padding:2px 6px;font-size:10px;background:transparent;color:var(--accent);border:1px solid transparent;border-radius:3px;cursor:pointer}
+.lut-table-wrap .btn-del:hover{border-color:var(--accent)}
+.lut-chart-wrap{flex:1;padding:12px;display:flex;flex-direction:column;min-width:280px}
+.lut-chart-wrap canvas{width:100%;height:220px;border-radius:4px;background:rgba(0,0,0,0.2)}
+.lut-actions{display:flex;gap:6px;margin-top:8px}
+.lut-actions button{padding:5px 12px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text2);cursor:pointer;font-family:var(--font-ui);transition:all .15s}
+.lut-actions button:hover{background:var(--border);color:var(--text)}
+.lut-actions button.lut-apply{background:var(--accent);color:#fff;border-color:var(--accent)}
+.lut-actions button.lut-apply:hover{filter:brightness(1.15)}
+/* File grid (All Files) */
+.file-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.file-card{padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;font-size:12px}
+.file-card:hover{background:var(--bg3);border-color:var(--text2)}
+.file-card .file-icon{font-size:16px;flex-shrink:0}
+.file-card.changed{border-color:var(--warn)}
+.file-card.changed::after{content:'*';color:var(--warn);margin-left:auto;font-weight:bold}
+/* Back button */
+.back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);cursor:pointer;font-family:var(--font-ui);font-size:12px;margin-bottom:16px;transition:all .15s}
+.back-btn:hover{background:var(--border);color:var(--text)}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:28px;min-width:400px;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.modal h3{font-size:16px;margin-bottom:10px}
+.modal p{font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.modal-actions button{padding:7px 20px;border-radius:5px;font-size:12px;cursor:pointer;border:none;font-family:var(--font-ui);transition:all .15s}
+.modal-actions .btn-primary{background:var(--accent);color:#fff;font-weight:600}
+.modal-actions .btn-primary:hover{filter:brightness(1.1)}
+.modal-actions .btn-secondary{background:var(--bg3);color:var(--text)}
+.modal-actions .btn-secondary:hover{background:var(--border)}
+/* Empty state */
+.empty-state{padding:40px;text-align:center;color:var(--text2)}
+.empty-state h3{color:var(--text);margin-bottom:8px;font-size:15px}
+.empty-state p{font-size:12px}
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text2)}
+/* Slider */
+.param-row input[type="range"]{flex:1;max-width:120px;height:4px;accent-color:var(--accent);cursor:pointer;padding:0;border:none;outline:none;box-shadow:none;margin-right:4px}
+.param-row input[type="range"]:focus{box-shadow:none}
+/* Select */
+.param-row select{flex:1;max-width:220px;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:var(--font-mono);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%238b949e' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
+.param-row select:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px rgba(248,81,73,0.2)}
+.param-row select.changed{border-color:var(--warn);background:rgba(210,153,34,0.08)}
+.param-row .param-name{cursor:help}
+/* Tooltip */
+#tooltip{position:fixed;z-index:999;max-width:300px;padding:8px 10px;background:var(--bg2);border:1px solid var(--accent);border-radius:6px;font-size:11px;line-height:1.5;color:var(--text);pointer-events:none;opacity:0;transition:opacity .1s;box-shadow:0 4px 12px rgba(0,0,0,0.5)}
+#tooltip.show{opacity:1}
+/* LUT drag cursor */
+.lut-chart-wrap canvas{cursor:default}
+.lut-chart-wrap canvas.dragging{cursor:grabbing}
+/* Transitions */
+#editor-area *{transition:background .15s,border-color .15s,color .15s}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <span class="brand">Wagner</span>
+  <span class="file-path" id="filePath">No file opened</span>
+  <span class="info-badges" id="infoBadges"></span>
+  <button class="tb-btn" onclick="actionOpen()">Open</button>
+  <button class="tb-btn tb-danger" onclick="actionUndo()">Undo</button>
+  <button class="tb-btn tb-danger" onclick="actionReset()">Reset</button>
+  <button class="tb-btn tb-save" onclick="actionSave()">Save</button>
+  <button class="tb-btn tb-support" onclick="showSupport()" style="margin-left:auto">❤️ Support</button>
+</div>
+
+<div id="main">
+  <nav id="catnav"></nav>
+  <div id="content">
+    <div id="editor-area">
+      <div id="welcome">
+        <div class="welcome-icon">&#x1f3ce;&#xfe0f;</div>
+        <h2>Wagner</h2>
+        <p>Assetto Corsa car data editor.<br>Open a .acd file to get started.</p>
+        <div class="drop-zone" id="dropZone">
+          <p>Drop data.acd here<br>or click below</p>
+        </div>
+        <button class="btn-open" onclick="actionOpen()">Open ACD File</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalFirstRun" style="display:none">
+  <div class="modal">
+    <h3>Welcome to Wagner</h3>
+    <p>Register Wagner in Windows right-click menu?<br>You'll be able to right-click any <b>data.acd</b> file and select <b>"Edit with Wagner"</b>.</p>
+    <p style="font-size:11px;color:var(--text2)">This modifies HKCU registry. No admin required.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="skipRegistration()">Skip</button>
+      <button class="btn-primary" onclick="registerShell()">Yes, Register</button>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ===== CONSTANTS =====
+const CATEGORIES = [
+  { id:'overview',   icon:'🏎️', label:'Overview',    files:['car.ini'] },
+  { id:'engine',     icon:'⚙️', label:'Engine',      files:['engine.ini','power.lut','throttle.lut','coast.lut'] },
+  { id:'drivetrain', icon:'🔧', label:'Drivetrain',  files:['drivetrain.ini','final.rto'] },
+  { id:'suspension', icon:'🛞', label:'Suspension',  files:['suspensions.ini'] },
+  { id:'tyres',      icon:'🏁', label:'Tyres',       files:['tyres.ini'] },
+  { id:'brakes',     icon:'🛑', label:'Brakes',      files:['brakes.ini'] },
+  { id:'aero',       icon:'🌬️', label:'Aero',        files:['aero.ini','drs.ini'] },
+  { id:'ai',         icon:'🤖', label:'AI',          files:['ai.ini'] },
+  { id:'setup',      icon:'🎛️', label:'Setup',       files:['setup.ini'] },
+  { id:'all',        icon:'📁', label:'All Files',   files:[] },
+]
+const UNITS = {
+  TOTALMASS:'kg',INERTIA:'kg\u00b7m\u00b2',LIMITER:'RPM',MINIMUM:'RPM',IDLE_CUTOFF:'RPM',
+  RPM_THRESHOLD:'RPM',RPM_REFERENCE:'RPM',REFERENCE_RPM:'RPM',LIMITER_HZ:'Hz',
+  WASTEGATE:'bar',MAX_BOOST:'bar',DISPLAY_MAX_BOOST:'bar',DEFAULT_TURBO_ADJUSTMENT:'%',
+  RESPONSE_TIME:'s',LAG_DN:'',LAG_UP:'',GAMMA:'',COCKPIT_ADJUSTABLE:'',
+  STEER_LOCK:'\u00b0',STEER_RATIO:'',FFMULT:'',LINEAR_STEER_ROD_RATIO:'',
+  FUEL:'L',MAX_FUEL:'L',CONSUMPTION:'L/s',
+  MAX_TORQUE:'Nm',FRONT_BIAS:'%',DISC_RADIUS:'m',
+  SPRING_RATE:'N/m',PROGRESSIVE_SPRING_RATE:'N/m/m',BUMP_STOP_RATE:'N/m',
+  BUMPSTOP_UP:'m',BUMPSTOP_DN:'m',PACKER_RANGE:'m',
+  ROD_LENGTH:'m',WHEELBASE:'m',TRACK:'m',CG_LOCATION:'%',
+  STATIC_CAMBER:'\u00b0',TOE_OUT:'m',HUB_MASS:'kg',RIM_OFFSET:'m',
+  DAMP_BUMP:'N/m/s',DAMP_REBOUND:'N/m/s',DAMP_FAST_BUMP:'N/m/s',DAMP_FAST_REBOUND:'N/m/s',
+  DAMP_FAST_BUMPTHRESHOLD:'m/s',DAMP_FAST_REBOUNDTHRESHOLD:'m/s',
+  PRESSURE_STATIC:'psi',PRESSURE_IDEAL:'psi',PRESSURE_SPRING_GAIN:'N/m/psi',PRESSURE_FLEX_GAIN:'',PRESSURE_RR_GAIN:'',PRESSURE_D_GAIN:'',
+  WIDTH:'m',RADIUS:'m',RIM_RADIUS:'m',ANGULAR_INERTIA:'kg\u00b7m\u00b2',DAMP:'N/m/s',RATE:'N/m',
+  FZ0:'N',RELAXATION_LENGTH:'m',FRICTION_LIMIT_ANGLE:'\u00b0',
+  FALLOFF_LEVEL:'',FALLOFF_SPEED:'',CX_MULT:'',COMBINED_FACTOR:'',BRAKE_DX_MOD:'',
+  LS_EXPY:'',LS_EXPX:'',DX_REF:'',DY_REF:'',FLEX_GAIN:'',CAMBER_GAIN:'',SPEED_SENSITIVITY:'',
+  ROLLING_RESISTANCE_0:'',ROLLING_RESISTANCE_1:'',ROLLING_RESISTANCE_SLIP:'',
+  FRONT:'N/m',REAR:'N/m',POWER:'',COAST:'',PRELOAD:'Nm',FRONT_SHARE:'%',
+  UP:'RPM',DOWN:'RPM',GASGAIN:'',STEER_GAIN:'',ULTRA_GRIP:'',
+  CL:'',CD:'',CHANGE_UP_TIME:'ms',CHANGE_DN_TIME:'ms',DOWN_TIME:'ms',
+  TYRE_CHANGE_TIME_SEC:'s',FUEL_LITER_TIME_SEC:'s',BODY_REPAIR_TIME_SEC:'s',ENGINE_REPAIR_TIME_SEC:'s',SUSP_REPAIR_TIME_SEC:'s',
+  MECHANICAL_EFFICIENCY:'%',IDLE_THROTTLE:'%',ALTITUDE_SENSITIVITY:'',
+  COUNT:'',GEAR_R:'',GEAR_1:'',GEAR_2:'',GEAR_3:'',GEAR_4:'',GEAR_5:'',GEAR_6:'',GEAR_7:'',GEAR_8:'',FINAL:'',
+  VISCOUS_FACTOR_1:'',VISCOUS_FACTOR_2:'',EXP_K:'',EXP:'',
+  FRONT_DIFF_POWER:'',FRONT_DIFF_COAST:'',FRONT_DIFF_PRELOAD:'Nm',
+  CENTRE_DIFF_POWER:'',CENTRE_DIFF_COAST:'',CENTRE_DIFF_PRELOAD:'Nm',CENTRE_RAMP_TORQUE:'Nm',CENTRE_MAX_TORQUE:'Nm',
+  REAR_DIFF_POWER:'',REAR_DIFF_COAST:'',REAR_DIFF_PRELOAD:'Nm',
+  RPM_DAMAGE_K:'',TORQUE_DAMAGE_K:'',TURBO_BOOST_THRESHOLD:'bar',TURBO_DAMAGE_K:'',
+}
+const HIDDEN_PARAMS = new Set([
+  'VERSION','POWER_CURVE','COAST_CURVE','FILENAME','LUT','INDEX',
+  'DY0','DY1','DX0','DX1','FLEX','XMU','COAST0','COAST1','COUNT',
+  'NON_LINEARITY','DISPLAY_MAX_BOOST','REQUIRED_VERSION',
+  'DRIVEREYES','ONBOARD_EXPOSURE','OUTBOARD_EXPOSURE',
+  'BONNET_CAMERA_POS','BUMPER_CAMERA_POS','MIRROR_POSITION',
+  'ON_BOARD_PITCH_ANGLE','GRAPHICS_OFFSET','GRAPHICS_PITCH_ROTATION',
+  'POSITION','POS_X','POS_Y','TAB','NAME','HELP','SHOW_CLICKS',
+  'MIN','MAX','STEP','DEFAULT',
+])
+const HIDDEN_SECTIONS = new Set([
+  '[HEADER]','[GRAPHICS]','[COAST_DATA]','[DAMAGE]',
+  '[FUELTANK]','[PIT_STOP]','[_EXTENSION]',
+  '[GRAPHICS_OFFSETS]','[COAST_CURVE]','[FLAMES]','[FLAME_PRESETS]',
+])
+const DROPDOWNS = {
+  '[TRACTION]::TYPE':       ['RWD','FWD','AWD','AWD2','4WD'],
+  '[FRONT]::TYPE':          ['DWB','STRUT'],
+  '[REAR]::TYPE':           ['DWB','STRUT','AXLE','ML'],
+  '[TURBO_0]::COCKPIT_ADJUSTABLE': ['0','1'],
+  '[TURBO_1]::COCKPIT_ADJUSTABLE': ['0','1'],
+  '::COCKPIT_ADJUSTABLE':   ['0','1'],
+  '::TYPE':                 ['RWD','FWD','AWD','AWD2'],
+  '::ENABLE':               ['0','1'],
+}
+const DESCRIPTIONS = {
+  TOTALMASS:'Full car mass (kg). Sprung + unsprung + driver. Does NOT include fuel.',
+  INERTIA:'Sprung mass inertia box x,y,z (m). Not total car dimensions.',
+  LIMITER:'Rev limiter cut-off (RPM). 0 = no limiter.',
+  MINIMUM:'Idle RPM. Below this the engine stalls.',
+  LIMITER_HZ:'Frequency of ignition cut at limiter (Hz).',
+  WASTEGATE:'Practical max boost (bar). Physics uses this value.',
+  MAX_BOOST:'Theoretical max boost (bar). Only reachable at REFERENCE_RPM.',
+  LAG_UP:'Turbo spool-up inertia. Closer to 1.0 = more lag when accelerating.',
+  LAG_DN:'Turbo spool-down inertia. Closer to 1.0 = boost hangs between shifts.',
+  REFERENCE_RPM:'Earliest RPM where MAX_BOOST can be reached.',
+  GAMMA:'Boost buildup curve exponent below REFERENCE_RPM.',
+  RESPONSE_TIME:'Engine throttle response delay (seconds).',
+  MECHANICAL_EFFICIENCY:'Engine thermal efficiency % for fuel consumption.',
+  IDLE_THROTTLE:'Throttle % to maintain idle RPM.',
+  ALTITUDE_SENSITIVITY:'Power loss per meter altitude. Default 0.1.',
+  STEER_LOCK:'Steering angle from center to full lock (degrees). Total lock = 2x this.',
+  STEER_RATIO:'Effective steering ratio multiplier.',
+  FFMULT:'Force Feedback gain multiplier. Car-specific FFB strength.',
+  LINEAR_STEER_ROD_RATIO:'Rack travel per degree. Sign determines steer direction.',
+  FUEL:'Starting fuel load (liters).',
+  MAX_FUEL:'Fuel tank capacity (liters).',
+  CONSUMPTION:'Fuel rate = (rpm * gas% * CONSUMPTION) / 1000 liters per second.',
+  MAX_TORQUE:'Max braking torque per side (Nm). AI also uses this value.',
+  FRONT_BIAS:'Front brake bias %. Higher = more front brake, more understeer.',
+  DISC_RADIUS:'Brake disc effective radius (m).',
+  SPRING_RATE:'Spring wheelrate (N/m). Per corner. Too stiff front = understeer.',
+  PROGRESSIVE_SPRING_RATE:'Progressive spring rate (N/m/m). 0 = linear.',
+  BUMP_STOP_RATE:'Bump stop spring wheelrate (N/m). Engages when hitting packer.',
+  BUMPSTOP_UP:'Meters from design height until bump rubber contacts (compression).',
+  BUMPSTOP_DN:'Meters from design height until rebound stop (extension).',
+  PACKER_RANGE:'Packer position (m). Formula: SUSTRVL + intended_gap.',
+  ROD_LENGTH:'Suspension pushrod length = ride height (m). Lower = lower car.',
+  WHEELBASE:'Longitudinal distance between front and rear axles (m).',
+  TRACK:'Lateral distance between tire contact patches (m). Wider = less weight transfer.',
+  CG_LOCATION:'Sprung mass longitudinal distribution (%). 50% = 0.50. Does NOT include unsprung.',
+  STATIC_CAMBER:'Static camber angle (degrees). Negative = wheels tilted inward at top.',
+  TOE_OUT:'Toe rod displacement (m). Affects bump steer.',
+  HUB_MASS:'Unsprung mass per corner (kg). STRUT: 20% converts to sprung mass!',
+  RIM_OFFSET:'Wheel offset (m). Added to X coordinates.',
+  DAMP_BUMP:'Slow bump damping (N/m/s). Controls body roll/pitch rate.',
+  DAMP_REBOUND:'Slow rebound damping (N/m/s). Controls body settling after compression.',
+  DAMP_FAST_BUMP:'Fast bump damping (N/m/s). For sharp impacts like kerbs.',
+  DAMP_FAST_REBOUND:'Fast rebound damping (N/m/s). Controls wheel hop.',
+  DAMP_FAST_BUMPTHRESHOLD:'Transition speed from slow to fast bump damping (m/s).',
+  DAMP_FAST_REBOUNDTHRESHOLD:'Transition speed from slow to fast rebound damping (m/s).',
+  FRONT:'Front anti-roll bar wheelrate (N/m).',
+  REAR:'Rear anti-roll bar wheelrate (N/m). Stiffer rear = more oversteer.',
+  FRONT_MOTION_RATIO:'ARB motion ratio front (%).',
+  REAR_MOTION_RATIO:'ARB motion ratio rear (%).',
+  POWER:'Differential lock ratio under acceleration (0-1). 1.0 = welded/spool.',
+  COAST:'Differential lock ratio under deceleration (0-1).',
+  PRELOAD:'Differential preload torque (Nm). Friction when neither accelerating nor decelerating.',
+  FRONT_SHARE:'Front torque split % for AWD. 50 = equal split.',
+  GEAR_1:'1st gear ratio (without final drive). Higher number = shorter gear.',
+  GEAR_2:'2nd gear ratio.',
+  GEAR_3:'3rd gear ratio.',
+  GEAR_4:'4th gear ratio.',
+  GEAR_5:'5th gear ratio.',
+  GEAR_6:'6th gear ratio.',
+  GEAR_R:'Reverse gear ratio (negative value).',
+  FINAL:'Final drive ratio. Higher = shorter gears overall, better acceleration.',
+  CHANGE_UP_TIME:'Upshift time (ms). Time gearbox takes to engage next gear.',
+  CHANGE_DN_TIME:'Downshift time (ms).',
+  DOWN_TIME:'Downshift time (ms).',
+  UP:'AI upshift RPM.',
+  DOWN:'AI downshift RPM.',
+  GASGAIN:'AI throttle aggressiveness multiplier.',
+  STEER_GAIN:'AI steering aggressiveness multiplier.',
+  ULTRA_GRIP:'AI grip multiplier. ≥1.0 makes AI faster. Compensate after power mods.',
+  GAS_CUTOFF_TIME:'AI clutch disengage time during shifts (seconds).',
+  SLIP_THRESHOLD:'AI clutch slip threshold (%).',
+  BRAKE_HINT:'AI braking point adjustment. <1.0 = brakes later.',
+  TRAIL_HINT:'AI trail braking amount. 0.5 = moderate.',
+  BASE:'AI lookahead base distance.',
+  GAS_BRAKE_LOOKAHEAD:'AI combined gas/brake lookahead.',
+  PRESSURE_STATIC:'Nominal cold tire pressure (psi). RATE is referenced at this pressure.',
+  PRESSURE_IDEAL:'Optimal tire pressure for grip (psi). Deviations lose grip via PRESSURE_D_GAIN.',
+  PRESSURE_SPRING_GAIN:'Tire spring rate gain per psi above PRESSURE_STATIC.',
+  PRESSURE_D_GAIN:'Grip loss per psi deviation from PRESSURE_IDEAL. 0.004 = 0.4% per psi.',
+  WIDTH:'Skid mark decal width (m). NOT physical tire width.',
+  RADIUS:'Unloaded tire radius at nominal pressure (m).',
+  RIM_RADIUS:'Wheel rim radius for collision (m).',
+  ANGULAR_INERTIA:'Rotational inertia of tire+wheel+brake disc (kg·m²).',
+  DAMP:'Tire vertical damping (N/m/s) at nominal load/pressure.',
+  RATE:'Tire vertical spring rate (N/m) at PRESSURE_STATIC.',
+  FZ0:'Reference tire load (newtons). Basis for grip curves.',
+  DX_REF:'Longitudinal friction coefficient at FZ0 (acceleration/braking).',
+  DY_REF:'Lateral friction coefficient at FZ0 (cornering).',
+  LS_EXPY:'Lateral load sensitivity exponent. Higher = more grip with load.',
+  LS_EXPX:'Longitudinal load sensitivity exponent.',
+  RELAXATION_LENGTH:'Tire relaxation length (m). Smaller = faster slip response.',
+  FRICTION_LIMIT_ANGLE:'Peak lateral slip angle at FZ0 (degrees).',
+  FALLOFF_LEVEL:'Grip at infinite slip (%). 0.70 = 70% of peak grip when fully sliding.',
+  FALLOFF_SPEED:'Grip drop-off rate after peak slip angle.',
+  CX_MULT:'Longitudinal peak slip ratio: tan(peak_angle) / CX_MULT.',
+  COMBINED_FACTOR:'Combined lateral+longitudinal grip interaction. 2.0 = traction circle. >2 squares it.',
+  BRAKE_DX_MOD:'Longitudinal grip mod under braking. 0.02 = +2% grip when braking.',
+  FLEX_GAIN:'Additional slip angle from contact patch flex.',
+  CAMBER_GAIN:'Camber thrust: CAMBER_GAIN * sin(camber_angle).',
+  DCAMBER_0:'Formula-based camber sensitivity coefficient.',
+  DCAMBER_1:'Formula-based camber sensitivity coefficient.',
+  ROLLING_RESISTANCE_0:'Constant rolling resistance term.',
+  ROLLING_RESISTANCE_1:'Speed-squared rolling resistance term.',
+  SPEED_SENSITIVITY:'Grip reduction with slip speed. 0 = no reduction.',
+  CL:'Lift coefficient. Negative value = downforce.',
+  CD:'Drag coefficient. Higher = more air resistance, lower top speed.',
+  DRAG_FORCE_DELAY:'Aero drag response delay (seconds).',
+  FRONT_FORCE_DELAY:'Front aero response delay (seconds).',
+  REAR_FORCE_DELAY:'Rear aero response delay (seconds).',
+  TYRE_CHANGE_TIME_SEC:'Pit stop: time to change all 4 tires (seconds).',
+  FUEL_LITER_TIME_SEC:'Pit stop: time per liter of fuel (seconds).',
+  BODY_REPAIR_TIME_SEC:'Pit stop: body repair time (seconds).',
+  ENGINE_REPAIR_TIME_SEC:'Pit stop: engine repair time (seconds).',
+  SUSP_REPAIR_TIME_SEC:'Pit stop: suspension repair time (seconds).',
+  VISCOUS_FACTOR_1:'Cphys viscous coupling factor 1.',
+  VISCOUS_FACTOR_2:'Cphys viscous coupling factor 2.',
+  EXP_K:'Cphys viscous coupling exponent K.',
+  EXP:'Cphys viscous coupling exponent.',
+  RPM_THRESHOLD:'RPM threshold before engine damage starts.',
+  RPM_DAMAGE_K:'Engine damage accumulation rate per second above threshold.',
+  TURBO_BOOST_THRESHOLD:'Boost pressure before turbo damage starts (bar).',
+  TURBO_DAMAGE_K:'Turbo damage accumulation rate above threshold.',
+  TORQUE_DAMAGE_K:'Drivetrain damage accumulation rate.',
+  CENTRE_RAMP_TORQUE:'AWD2 centre viscous coupling torque per rad/s (Nm/rad/s).',
+  CENTRE_MAX_TORQUE:'AWD2 centre coupling max torque (Nm).',
+  FRONT_DIFF_POWER:'Front diff lock ratio under acceleration (0-1).',
+  FRONT_DIFF_COAST:'Front diff lock ratio under deceleration (0-1).',
+  FRONT_DIFF_PRELOAD:'Front diff preload (Nm).',
+  CENTRE_DIFF_POWER:'Centre diff lock ratio under acceleration (0-1).',
+  CENTRE_DIFF_COAST:'Centre diff lock ratio under deceleration (0-1).',
+  CENTRE_DIFF_PRELOAD:'Centre diff preload (Nm).',
+  REAR_DIFF_POWER:'Rear diff lock ratio under acceleration (0-1).',
+  REAR_DIFF_COAST:'Rear diff lock ratio under deceleration (0-1).',
+  REAR_DIFF_PRELOAD:'Rear diff preload (Nm).',
+  BASEY:'Sprung CG height connection point. RADIUS - BASEY = actual CG height.',
+  FRONT_SHARE:'Front torque split % for AWD. 50 = equal split.',
+  AERO_HINT:'AI aero utilization factor (0-1).',
+  DEFAULT_TURBO_ADJUSTMENT:'Default turbo boost adjuster position (0-1).',
+  COCKPIT_ADJUSTABLE:'Whether turbo boost is adjustable from cockpit (0=no, 1=yes).',
+  ROD_LENGTH:'Suspension rod length = design ride height (m). Lower value = lower car.',
+  PICKUP_FRONT_HEIGHT:'Display-only front ride height. Does NOT affect physics.',
+  PICKUP_REAR_HEIGHT:'Display-only rear ride height. Does NOT affect physics.',
+  CHECK: 'Suspension check value - visual alignment with model.',
+}
+const RANGES = {
+  TOTALMASS:[500,3000,1], LIMITER:[2000,12000,100], MINIMUM:[500,2000,50],
+  INERTIA:[0.05,0.50,0.005], STEER_LOCK:[200,900,10],
+  FUEL:[0,200,1], MAX_FUEL:[0,200,1], WASTEGATE:[0,5.0,0.05],
+  MAX_BOOST:[0,5.0,0.05], LAG_UP:[0.900,1.000,0.001], LAG_DN:[0.900,1.000,0.001],
+  RESPONSE_TIME:[0,2.0,0.01], SPRING_RATE:[5000,300000,500],
+  PROGRESSIVE_SPRING_RATE:[0,100000,500], BUMP_STOP_RATE:[10000,500000,500],
+  DAMP_BUMP:[500,30000,100], DAMP_REBOUND:[500,30000,100],
+  DAMP_FAST_BUMP:[500,30000,100], DAMP_FAST_REBOUND:[500,30000,100],
+  ROD_LENGTH:[0.05,0.35,0.001], STATIC_CAMBER:[-5.0,0,0.1],
+  WHEELBASE:[1.5,4.0,0.01], TRACK:[1.0,2.5,0.01],
+  CG_LOCATION:[0.40,0.65,0.01], PRESSURE_STATIC:[10,50,0.5],
+  PRESSURE_IDEAL:[10,50,0.5], FZ0:[1000,15000,100],
+  MAX_TORQUE:[500,10000,100], FRONT_BIAS:[50,75,0.5],
+  POWER:[0,1.0,0.05], COAST:[0,1.0,0.05], PRELOAD:[0,500,5],
+  FRONT:[0,200000,500], REAR:[0,200000,500], FFMULT:[0.5,3.0,0.1],
+  UP:[2000,12000,100], DOWN:[2000,12000,100],
+  ULTRA_GRIP:[0.8,2.0,0.05], GASGAIN:[0.5,10.0,0.5], STEER_GAIN:[0.5,3.0,0.1],
+  CL:[-5.0,5.0,0.1], CD:[0,3.0,0.01], CHANGE_UP_TIME:[50,500,10],
+  CHANGE_DN_TIME:[50,500,10], DOWN_TIME:[50,500,10],
+  PRESSURE_SPRING_GAIN:[0,20000,100], FALLOFF_LEVEL:[0.5,1.0,0.01],
+  FALLOFF_SPEED:[0,10,0.1], CX_MULT:[0.1,2.0,0.01],
+  COMBINED_FACTOR:[0.5,5.0,0.1], BRAKE_DX_MOD:[0,0.3,0.01],
+  CAMBER_GAIN:[0,0.5,0.01], SPEED_SENSITIVITY:[0,1.0,0.05],
+  ROLLING_RESISTANCE_0:[0,500,5], ROLLING_RESISTANCE_1:[0,50,0.5],
+  LS_EXPY:[0.5,2.0,0.01], LS_EXPX:[0.5,2.0,0.01],
+  DX_REF:[0.5,3.0,0.01], DY_REF:[0.5,3.0,0.01],
+  RELAXATION_LENGTH:[0.05,0.5,0.01], FRICTION_LIMIT_ANGLE:[5,25,0.5],
+  VISCOUS_FACTOR_1:[0,100,1], VISCOUS_FACTOR_2:[0,100,1],
+  FRONT_SHARE:[0,100,5], FRONT_DIFF_POWER:[0,1.0,0.05],
+  FRONT_DIFF_COAST:[0,1.0,0.05], FRONT_DIFF_PRELOAD:[0,500,5],
+  CENTRE_DIFF_POWER:[0,1.0,0.05], CENTRE_DIFF_COAST:[0,1.0,0.05],
+  CENTRE_DIFF_PRELOAD:[0,500,5], CENTRE_RAMP_TORQUE:[0,2000,10],
+  CENTRE_MAX_TORQUE:[0,5000,50], REAR_DIFF_POWER:[0,1.0,0.05],
+  REAR_DIFF_COAST:[0,1.0,0.05], REAR_DIFF_PRELOAD:[0,500,5],
+  MECHANICAL_EFFICIENCY:[0.5,1.0,0.01], IDLE_THROTTLE:[0,0.2,0.01],
+  DEFAULT_TURBO_ADJUSTMENT:[0,1.0,0.1], GAMMA:[0.5,5.0,0.1],
+  STEER_RATIO:[5,20,0.5], LIMITER_HZ:[10,200,5],
+  RPM_THRESHOLD:[4000,10000,100], RPM_REFERENCE:[2000,10000,100],
+  DAMP_FAST_BUMPTHRESHOLD:[0.01,0.5,0.01], DAMP_FAST_REBOUNDTHRESHOLD:[0.01,0.5,0.01],
+  BUMPSTOP_UP:[0.01,0.15,0.001], BUMPSTOP_DN:[0.01,0.15,0.001],
+  PACKER_RANGE:[0,0.15,0.001], TOE_OUT:[0,0.02,0.001],
+  HUB_MASS:[5,80,1], RIM_OFFSET:[0,0.1,0.001],
+  FRONT_MOTION_RATIO:[0.1,1.0,0.01], REAR_MOTION_RATIO:[0.1,1.0,0.01],
+  BASEY:[0,0.5,0.001], PRESSURE_D_GAIN:[0,0.01,0.0005],
+  PRESSURE_FLEX_GAIN:[0,0.5,0.01], PRESSURE_RR_GAIN:[0,0.01,0.001],
+  TYRE_CHANGE_TIME_SEC:[0,60,1], FUEL_LITER_TIME_SEC:[0.1,5,0.1],
+  BODY_REPAIR_TIME_SEC:[0,120,1], ENGINE_REPAIR_TIME_SEC:[0,120,1],
+  SUSP_REPAIR_TIME_SEC:[0,120,1], ALTITUDE_SENSITIVITY:[0,0.3,0.01],
+}
+
+// ===== STATE =====
+let state = {
+  path:null, files:[], carName:'', info:{},
+  currentCat:null, changedFiles:new Set(),
+  fullFileData:{}
+}
+let _paramTimers = {}
+
+// ===== API =====
+async function api(url, opts={}) {
+  try {
+    const r = await fetch(url, {headers:{'Content-Type':'application/json'}, ...opts})
+    if (!r.ok) { const e = await r.json().catch(()=>({error:r.statusText})); throw new Error(e.error) }
+    return await r.json()
+  } catch(e) { alert('Error: '+e.message); throw e }
+}
+
+// ===== FILE OPERATIONS =====
+async function openFile(path) {
+  const data = await api('/api/open', {method:'POST', body:JSON.stringify({path})})
+  state.path = data.path
+  state.files = data.files
+  state.carName = data.car_name
+  state.info = data.info
+  state.changedFiles = new Set()
+  state.currentCat = null
+  state.fullFileData = {}
+  document.getElementById('filePath').textContent = data.path
+  document.getElementById('welcome').style.display = 'none'
+  document.getElementById('catnav').style.display = 'flex'
+  updateBadges()
+  renderCatNav()
+  selectCategory('overview')
+}
+
+async function actionOpen() {
+  try {
+    const path = await window.pywebview.api.select_file_dialog()
+    if (path) await openFile(path)
+  } catch(e) { alert('File dialog not available. Use drag & drop or command line.') }
+}
+
+// ===== CATEGORY NAV =====
+function renderCatNav() {
+  const nav = document.getElementById('catnav')
+  nav.innerHTML = CATEGORIES.map(cat => {
+    const hasChanges = cat.id === 'all'
+      ? state.changedFiles.size > 0
+      : cat.files.some(f => state.changedFiles.has(f))
+    const active = state.currentCat === cat.id ? ' active' : ''
+    const changes = hasChanges ? ' has-changes' : ''
+    return `<button class="cat-btn${active}${changes}" onclick="selectCategory('${cat.id}')">
+      <span class="cat-icon">${cat.icon}</span><span class="cat-label">${cat.label}</span><span class="cat-dot"></span>
+    </button>`
+  }).join('')
+}
+
+function selectCategory(catId) {
+  state.currentCat = catId
+  renderCatNav()
+  if (catId === 'all') { renderAllFiles(); return }
+  const cat = CATEGORIES.find(c => c.id === catId)
+  if (!cat) return
+  renderCategoryView(cat)
+}
+
+// ===== CATEGORY RENDERING =====
+async function renderCategoryView(cat) {
+  const existingFiles = cat.files.filter(f => state.files.includes(f))
+  state.fullFileData = {}
+
+  for (const f of existingFiles) {
+    try { state.fullFileData[f] = await api('/api/file?name='+encodeURIComponent(f)) }
+    catch(e) {}
+  }
+
+  let html = `<div class="cat-header"><span class="cat-title">${cat.icon} ${cat.label}</span><span class="cat-files">${existingFiles.length} file${existingFiles.length!==1?'s':''}</span></div>`
+
+  if (cat.id === 'overview') {
+    html += `<div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Mass</div><div class="stat-value">${state.info.mass??'?'} <span class="stat-unit">kg</span></div></div>
+      <div class="stat-card"><div class="stat-label">Rev Limiter</div><div class="stat-value">${state.info.limiter??'?'} <span class="stat-unit">RPM</span></div></div>
+      <div class="stat-card"><div class="stat-label">Peak Power</div><div class="stat-value">${state.info.power_peak??'?'} <span class="stat-unit">kW</span></div></div>
+      <div class="stat-card"><div class="stat-label">Car</div><div class="stat-value" style="font-size:16px">${escHtml(state.carName)}</div></div>
+    </div>`
+  }
+
+  if (cat.id === 'engine' && state.files.includes('power.lut')) {
+    const engineIni = state.fullFileData['engine.ini']?.content || ''
+    const engineStats = calcEngineStats(state.fullFileData['power.lut']?.content || '', engineIni)
+    const boostInfo = engineStats.boost > 0 ? `<div class="stat-card" style="border-color:var(--accent)"><div class="stat-label">Boost</div><div class="stat-value" style="color:var(--accent);font-size:15px">${engineStats.boost.toFixed(2)} <span class="stat-unit">bar</span></div><div style="font-size:11px;color:var(--text2)">×${(1+engineStats.boost).toFixed(2)} multiplier</div></div>` : ''
+    html += `<div class="stats-row" id="engineStats">
+      <div class="stat-card"><div class="stat-label">Power</div><div class="stat-value">${engineStats.peakPower} <span class="stat-unit">kW</span></div><div style="font-size:12px;color:var(--text2)">${engineStats.peakPowerHP} hp</div></div>
+      <div class="stat-card"><div class="stat-label">Power RPM</div><div class="stat-value">${engineStats.peakPowerRPM}</div></div>
+      <div class="stat-card"><div class="stat-label">Torque</div><div class="stat-value">${engineStats.peakTorque} <span class="stat-unit">Nm</span></div><div style="font-size:12px;color:var(--text2)">${engineStats.peakTorqueLbFt} lb-ft</div></div>
+      <div class="stat-card"><div class="stat-label">Torque RPM</div><div class="stat-value">${engineStats.peakTorqueRPM}</div></div>
+      ${boostInfo}
+    </div>`
+  }
+
+  if (existingFiles.length === 0) {
+    html += `<div class="empty-state"><h3>No matching files</h3><p>This ACD doesn't contain files for this category.</p></div>`
+  } else {
+    for (const f of existingFiles) {
+      const fd = state.fullFileData[f]
+      if (!fd) continue
+      if (fd.is_lut) html += renderLutCard(f, fd.content)
+      else html += renderIniCard(f, fd.content)
+    }
+  }
+
+  document.getElementById('editor-area').innerHTML = html
+
+  for (const f of existingFiles) {
+    if (state.fullFileData[f]?.is_lut) {
+      setTimeout(() => drawLutChartForFile(f), 80)
+    }
+  }
+}
+
+function getBoost(engineIni) {
+  let maxBoost = 0
+  let inTurbo = false
+  for (const line of engineIni.split('\n')) {
+    const t = line.trim()
+    if (t.startsWith('[TURBO')) { inTurbo = true; continue }
+    if (inTurbo && t.startsWith('[') && t.endsWith(']')) { inTurbo = false; continue }
+    if (inTurbo && t.startsWith('WASTEGATE=')) {
+      const v = parseFloat(t.split('=')[1].split(';')[0].trim())
+      if (!isNaN(v) && v > maxBoost) maxBoost = v
+    }
+  }
+  return maxBoost
+}
+
+function calcEngineStats(content, engineIni) {
+  const points = []
+  const lines = content.split('\n')
+  for (const line of lines) {
+    const t = line.trim()
+    if (t && t.includes('|')) {
+      const parts = t.split('|')
+      if (parts.length >= 2) {
+        const rpm = parseFloat(parts[0].trim()), kw = parseFloat(parts[1].trim())
+        if (!isNaN(rpm) && !isNaN(kw) && rpm > 0) points.push({ rpm, kw })
+      }
+    }
+  }
+  const boost = getBoost(engineIni)
+  const mult = 1 + boost
+  if (points.length === 0) return { peakPower: '?', peakPowerHP: '?', peakPowerRPM: '?', peakTorque: '?', peakTorqueLbFt: '?', peakTorqueRPM: '?', boost: 0 }
+  let peakP = points[0], peakT = { rpm: points[0].rpm, nm: 0 }
+  for (const p of points) {
+    const adjKw = p.kw * mult
+    if (adjKw > peakP.kw * mult) peakP = p
+    const nm = adjKw * 9549.3 / p.rpm
+    if (nm > peakT.nm) peakT = { rpm: p.rpm, nm }
+  }
+  return {
+    peakPower: Math.round(peakP.kw * mult),
+    peakPowerHP: Math.round(peakP.kw * mult * 1.341),
+    peakPowerRPM: Math.round(peakP.rpm),
+    peakTorque: Math.round(peakT.nm),
+    peakTorqueLbFt: Math.round(peakT.nm * 0.7376),
+    peakTorqueRPM: Math.round(peakT.rpm),
+    boost,
+  }
+}
+
+function updateEngineStats() {
+  const points = getLutPoints('power.lut')
+  if (points.length === 0) return
+  let boost = 0
+  const rows = document.querySelectorAll('.param-row[data-file="engine.ini"]')
+  for (const r of rows) {
+    const p = r.dataset.param || ''
+    if (p.includes('[TURBO') && p.includes('::WASTEGATE')) {
+      const inp = r.querySelector('input')
+      if (inp) { const v = parseFloat(inp.value); if (!isNaN(v) && v > boost) boost = v }
+    }
+  }
+  const mult = 1 + boost
+  let peakP = points[0], peakT = { rpm: points[0].rpm, nm: 0 }
+  for (const p of points) {
+    const adjKw = p.power * mult
+    if (adjKw > peakP.power * mult) peakP = p
+    if (p.rpm > 0) {
+      const nm = adjKw * 9549.3 / p.rpm
+      if (nm > peakT.nm) peakT = { rpm: p.rpm, nm }
+    }
+  }
+  const boostInfo = boost > 0 ? `<div class="stat-card" style="border-color:var(--accent)"><div class="stat-label">Boost</div><div class="stat-value" style="color:var(--accent);font-size:15px">${boost.toFixed(2)} <span class="stat-unit">bar</span></div><div style="font-size:11px;color:var(--text2)">×${(1+boost).toFixed(2)} multiplier</div></div>` : ''
+  const el = document.getElementById('engineStats')
+  if (el) {
+    el.innerHTML = `<div class="stat-card"><div class="stat-label">Power</div><div class="stat-value">${Math.round(peakP.power*mult)} <span class="stat-unit">kW</span></div><div style="font-size:12px;color:var(--text2)">${Math.round(peakP.power*mult*1.341)} hp</div></div>
+      <div class="stat-card"><div class="stat-label">Power RPM</div><div class="stat-value">${Math.round(peakP.rpm)}</div></div>
+      <div class="stat-card"><div class="stat-label">Torque</div><div class="stat-value">${Math.round(peakT.nm)} <span class="stat-unit">Nm</span></div><div style="font-size:12px;color:var(--text2)">${Math.round(peakT.nm*0.7376)} lb-ft</div></div>
+      <div class="stat-card"><div class="stat-label">Torque RPM</div><div class="stat-value">${Math.round(peakT.rpm)}</div></div>
+      ${boostInfo}`
+  }
+  // Also update power peak badge
+  state.info.power_peak = Math.round(peakP.power * mult)
+  updateBadges()
+}
+
+// ===== INI RENDERING =====
+function renderIniCard(filename, content) {
+  const lines = content.split('\n')
+  let sections = [], currentSection = null
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (/^\[.+\]$/.test(trimmed)) {
+      currentSection = { name: trimmed, params: [] }
+      sections.push(currentSection)
+    } else if (currentSection && trimmed !== '' && trimmed.indexOf('=') >= 0) {
+      const eq = trimmed.indexOf('=')
+      const rawVal = trimmed.substring(eq + 1)
+      const val = rawVal.split(';')[0].trim()
+      currentSection.params.push({ param: trimmed.substring(0, eq), value: val })
+    }
+  }
+
+  if (sections.length === 0) {
+    const params = []
+    for (const line of lines) {
+      const trimmed = line.trim()
+      const eq = trimmed.indexOf('=')
+      if (eq >= 0 && trimmed !== '') {
+        const rawVal = trimmed.substring(eq + 1)
+        const val = rawVal.split(';')[0].trim()
+        params.push({ param: trimmed.substring(0, eq), value: val })
+      }
+    }
+    if (params.length > 0) sections.push({ name: '[Parameters]', params })
+  }
+
+  const fileChanged = state.changedFiles.has(filename)
+  let html = ''
+
+  for (const sec of sections) {
+    if (HIDDEN_SECTIONS.has(sec.name)) continue
+    const visibleParams = sec.params.filter(p => !HIDDEN_PARAMS.has(p.param))
+    if (visibleParams.length === 0) continue
+
+    html += `<div class="card"><div class="card-header"><span>${escHtml(sec.name)}</span><span class="card-file">${escHtml(filename)}</span></div><div class="card-body">`
+    for (const p of visibleParams) {
+      const paramKey = sec.name + '::' + p.param
+      const unit = UNITS[p.param] || ''
+      const desc = DESCRIPTIONS[p.param] || ''
+      const dropdownKey = paramKey in DROPDOWNS ? paramKey : '::' + p.param
+      const dd = DROPDOWNS[dropdownKey]
+      const range = RANGES[p.param]
+
+      let inputHtml
+      if (dd) {
+        let opts = dd.map(v => `<option value="${escAttr(v)}" ${v===p.value?'selected':''}>${escHtml(v)}</option>`).join('')
+        if (!dd.includes(p.value)) opts += `<option value="${escAttr(p.value)}" selected>${escHtml(p.value)}</option>`
+        inputHtml = `<select class="${fileChanged?'changed':''}" data-file="${escAttr(filename)}" data-param="${escAttr(paramKey)}" onchange="onParamChange(this)">${opts}</select>`
+      } else if (range) {
+        const [min, max, step] = range
+        inputHtml = `<input type="range" min="${min}" max="${max}" step="${step}" value="${escAttr(p.value)}" data-file="${escAttr(filename)}" data-param="${escAttr(paramKey)}" oninput="const r=this.closest('.param-row');const t=r.querySelector('input[type=text]');if(t)t.value=this.value" onchange="onParamChange(this)">
+        <input type="text" class="${fileChanged?'changed':''}" value="${escAttr(p.value)}" style="max-width:80px"
+               data-file="${escAttr(filename)}" data-param="${escAttr(paramKey)}"
+               onchange="onParamChange(this)" onkeydown="if(event.key==='Enter'){const r=this.closest('.param-row');saveParam(r.dataset.file,r.dataset.param,this.value)}">`
+      } else {
+        inputHtml = `<input type="text" class="${fileChanged?'changed':''}" value="${escAttr(p.value)}"
+               data-file="${escAttr(filename)}" data-param="${escAttr(paramKey)}"
+               onchange="onParamChange(this)" onkeydown="if(event.key==='Enter'){const r=this.closest('.param-row');saveParam(r.dataset.file,r.dataset.param,this.value)}">`
+      }
+
+      html += `<div class="param-row" data-file="${escAttr(filename)}" data-param="${escAttr(paramKey)}">
+        <span class="param-name" data-desc="${escAttr(desc)}" onmouseenter="showTooltip(this,event)" onmouseleave="hideTooltip()">${escHtml(p.param)}</span>
+        ${inputHtml}
+        ${unit ? `<span class="unit">${unit}</span>` : '<span class="unit"></span>'}
+      </div>`
+    }
+    html += `</div></div>`
+  }
+
+  if (html === '') {
+    html += `<div class="card"><div class="card-header"><span class="card-file">${escHtml(filename)}</span></div><div class="card-body"><div style="padding:14px;color:var(--text2);font-size:12px">No editable parameters found.</div></div></div>`
+  }
+
+  return html
+}
+
+function onParamChange(input) {
+  const row = input.closest('.param-row')
+  if (!row) return
+  const file = row.dataset.file
+  const param = row.dataset.param
+  const key = file + '\x00' + param
+  if (_paramTimers[key]) clearTimeout(_paramTimers[key])
+  _paramTimers[key] = setTimeout(() => saveParam(file, param, input.value), 400)
+}
+
+async function saveParam(file, param, value) {
+  try {
+    await api('/api/edit_param', {method:'POST', body:JSON.stringify({name:file, param, value})})
+    state.changedFiles.add(file)
+    const row = findParamRow(file, param)
+    if (row) { const inp = row.querySelector('input'); if (inp) inp.classList.add('changed') }
+    updateBadges()
+    renderCatNav()
+    if (file === 'engine.ini' && param.includes('WASTEGATE')) updateEngineStats()
+  } catch(e) {}
+}
+
+function findParamRow(file, param) {
+  const rows = document.querySelectorAll('.param-row')
+  for (const r of rows) { if (r.dataset.file === file && r.dataset.param === param) return r }
+  return null
+}
+
+// ===== LUT RENDERING =====
+function renderLutCard(filename, content) {
+  const lines = content.split('\n')
+  let points = []
+  for (const line of lines) {
+    const t = line.trim()
+    if (t && t.includes('|')) {
+      const parts = t.split('|')
+      if (parts.length >= 2) {
+        const a = parseFloat(parts[0].trim()), b = parseFloat(parts[1].trim())
+        if (!isNaN(a) && !isNaN(b)) points.push({ rpm:a, power:b })
+      }
+    }
+  }
+
+  let rows = ''
+  for (let i = 0; i < points.length; i++) {
+    rows += `<tr>
+      <td>${i+1}</td>
+      <td><input type="number" value="${points[i].rpm}" data-field="rpm" data-lut-file="${escAttr(filename)}" onchange="updateLutChartForFile(this.dataset.lutFile)"></td>
+      <td><input type="number" value="${points[i].power}" data-field="power" data-lut-file="${escAttr(filename)}" onchange="updateLutChartForFile(this.dataset.lutFile)"></td>
+      <td><button class="btn-del" data-lut-file="${escAttr(filename)}" onclick="deleteLutRow(this,this.dataset.lutFile)">x</button></td>
+    </tr>`
+  }
+
+  return `<div class="card lut-card">
+    <div class="card-header"><span>${escHtml(filename)}</span><span class="card-file">RPM | Value</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="lut-editor-wrap">
+        <div class="lut-table-wrap" data-lut-file="${escAttr(filename)}">
+          <table><thead><tr><th>#</th><th>RPM</th><th>Val</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+        </div>
+        <div class="lut-chart-wrap">
+          <canvas data-lut-canvas="${escAttr(filename)}"></canvas>
+          <div class="lut-actions">
+            <button data-lut-file="${escAttr(filename)}" onclick="addLutRow(this.dataset.lutFile)">+ Row</button>
+            <button data-lut-file="${escAttr(filename)}" onclick="normalizeLut(this.dataset.lutFile)">Norm</button>
+            <button class="lut-apply" data-lut-file="${escAttr(filename)}" onclick="applyLut(this.dataset.lutFile)">Apply</button>
+            <button data-lut-file="${escAttr(filename)}" onclick="reloadLut(this.dataset.lutFile)">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`
+}
+
+function getLutPoints(filename) {
+  const wrap = findLutWrap(filename)
+  if (!wrap) return []
+  const points = []
+  const rows = wrap.querySelectorAll('tbody tr')
+  for (const row of rows) {
+    const inputs = row.querySelectorAll('input')
+    if (inputs.length >= 2) {
+      const rpm = parseFloat(inputs[0].value), power = parseFloat(inputs[1].value)
+      if (!isNaN(rpm) && !isNaN(power)) points.push({ rpm, power })
+    }
+  }
+  return points
+}
+
+function findLutWrap(filename) {
+  const wraps = document.querySelectorAll('.lut-table-wrap')
+  for (const w of wraps) { if (w.dataset.lutFile === filename) return w }
+  return null
+}
+
+function findLutCanvas(filename) {
+  const canvases = document.querySelectorAll('canvas[data-lut-canvas]')
+  for (const c of canvases) { if (c.dataset.lutCanvas === filename) return c }
+  return null
+}
+
+function drawLutChartForFile(filename) {
+  const points = getLutPoints(filename)
+  points.sort((a,b) => a.rpm - b.rpm)
+  const canvas = findLutCanvas(filename)
+  if (!canvas) return
+  drawChart(canvas, points)
+  if (filename === 'power.lut') updateEngineStats()
+}
+
+function updateLutChartForFile(filename) {
+  drawLutChartForFile(filename)
+}
+
+let _dragState = { filename: null, index: -1, active: false, points: null, canvas: null }
+
+function drawChart(canvas, points) {
+  const ctx = canvas.getContext('2d')
+  const dpr = window.devicePixelRatio || 1
+  const rect = canvas.getBoundingClientRect()
+  const W = rect.width, H = 220
+  canvas.width = W * dpr; canvas.height = H * dpr
+  ctx.scale(dpr, dpr)
+  ctx.clearRect(0, 0, W, H)
+  if (points.length === 0) return
+
+  const minRpm = points[0].rpm, maxRpm = points[points.length-1].rpm
+  const maxVal = Math.max(...points.map(p => p.power))
+  const pad = 36
+  function x(v) { return pad + ((v-minRpm)/(maxRpm-minRpm||1))*(W-pad*2) }
+  function y(v) { return H-pad - (v/(maxVal||1))*(H-pad*2) }
+
+  ctx.strokeStyle = '#30363d'; ctx.lineWidth = 0.5
+  for (let i=0; i<=4; i++) { const gy=pad+(H-pad*2)*i/4; ctx.beginPath(); ctx.moveTo(pad,gy); ctx.lineTo(W-pad,gy); ctx.stroke() }
+  for (let i=0; i<=4; i++) { const gx=pad+(W-pad*2)*i/4; ctx.beginPath(); ctx.moveTo(gx,pad); ctx.lineTo(gx,H-pad); ctx.stroke() }
+
+  ctx.strokeStyle = '#666'; ctx.lineWidth = 1
+  ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.stroke()
+
+  ctx.fillStyle = '#8b949e'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'
+  for (let i=0; i<=4; i++) { const v=Math.round(maxVal*(4-i)/4); ctx.fillText(v, pad-6, pad+(H-pad*2)*i/4+4) }
+  ctx.textAlign = 'center'; ctx.fillText(Math.round(minRpm), pad, H-pad+14); ctx.fillText(Math.round(maxRpm), W-pad, H-pad+14)
+
+  ctx.strokeStyle = '#f85149'; ctx.lineWidth = 2
+  ctx.beginPath(); ctx.moveTo(x(points[0].rpm), y(points[0].power))
+  for (let i=1; i<points.length; i++) ctx.lineTo(x(points[i].rpm), y(points[i].power))
+  ctx.stroke()
+
+  for (let i = 0; i < points.length; i++) {
+    const px = x(points[i].rpm), py = y(points[i].power)
+    const active = _dragState.active && _dragState.index === i && _dragState.filename === _dragState.canvas?.dataset?.lutCanvas
+    if (active) {
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI*2); ctx.fill()
+      ctx.strokeStyle = '#f85149'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI*2); ctx.stroke()
+      ctx.fillStyle = '#e6edf3'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left'
+      ctx.fillText(Math.round(points[i].rpm)+' | '+Math.round(points[i].power), px+8, py-8)
+    } else {
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI*2); ctx.fill()
+    }
+  }
+
+  canvas._chartData = { points, pad, minRpm, maxRpm, maxVal, x, y, W, H }
+}
+
+function setupLutDrag() {
+  document.addEventListener('mousedown', e => {
+    const canvas = e.target.closest('canvas[data-lut-canvas]')
+    if (!canvas || !canvas._chartData) return
+    const d = canvas._chartData
+    const rect = canvas.getBoundingClientRect()
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top
+    let bestIdx = -1, bestDist = 144
+    for (let i = 0; i < d.points.length; i++) {
+      const dx = d.x(d.points[i].rpm) - mx, dy = d.y(d.points[i].power) - my
+      const dist = dx*dx + dy*dy
+      if (dist < bestDist) { bestDist = dist; bestIdx = i }
+    }
+    if (bestIdx >= 0) {
+      _dragState = { filename: canvas.dataset.lutCanvas, index: bestIdx, active: true, points: [...d.points], canvas }
+      canvas.classList.add('dragging')
+      canvas.style.cursor = 'grabbing'
+      e.preventDefault()
+    }
+  })
+
+  document.addEventListener('mousemove', e => {
+    if (!_dragState.active) return
+    const d = _dragState.canvas._chartData
+    if (!d) return
+    const rect = _dragState.canvas.getBoundingClientRect()
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top
+    let newRpm = d.minRpm + ((mx - d.pad) / (d.W - d.pad*2)) * (d.maxRpm - d.minRpm)
+    let newVal = d.maxVal - ((my - d.pad) / (d.H - d.pad*2)) * d.maxVal
+    newRpm = Math.round(Math.max(d.minRpm, Math.min(d.maxRpm, newRpm)))
+    newVal = Math.round(Math.max(0, newVal))
+    if (_dragState.index > 0) newRpm = Math.max(newRpm, d.points[_dragState.index-1].rpm + 1)
+    if (_dragState.index < d.points.length-1) newRpm = Math.min(newRpm, d.points[_dragState.index+1].rpm - 1)
+    const pts = [...d.points]
+    pts[_dragState.index] = { rpm: newRpm, power: newVal }
+    _dragState.canvas._chartData.points = pts
+    drawChart(_dragState.canvas, pts)
+    syncLutTable(_dragState.filename, pts)
+    if (_dragState.filename === 'power.lut') updateEngineStats()
+  })
+
+  document.addEventListener('mouseup', () => {
+    if (!_dragState.active) return
+    _dragState.canvas.classList.remove('dragging')
+    _dragState.canvas.style.cursor = ''
+    const pts = _dragState.canvas._chartData?.points
+    if (pts) pts.sort((a,b) => a.rpm - b.rpm)
+    drawLutChartForFile(_dragState.filename)
+    syncLutTable(_dragState.filename, pts || getLutPoints(_dragState.filename))
+    _dragState = { filename: null, index: -1, active: false, points: null, canvas: null }
+  })
+}
+
+function syncLutTable(filename, points) {
+  const wrap = findLutWrap(filename)
+  if (!wrap) return
+  const rows = wrap.querySelectorAll('tbody tr')
+  for (let i = 0; i < rows.length; i++) {
+    const inputs = rows[i].querySelectorAll('input')
+    if (inputs.length >= 2 && i < points.length) {
+      inputs[0].value = points[i].rpm
+      inputs[1].value = points[i].power
+    }
+  }
+}
+
+setupLutDrag()
+
+function addLutRow(filename) {
+  const points = getLutPoints(filename)
+  const last = points.length>0 ? points[points.length-1] : {rpm:0, power:0}
+  const wrap = findLutWrap(filename)
+  if (!wrap) return
+  const tbody = wrap.querySelector('tbody')
+  if (!tbody) return
+  const idx = tbody.children.length
+  const tr = document.createElement('tr')
+  tr.innerHTML = `<td>${idx+1}</td>
+    <td><input type="number" value="${last.rpm+500}" data-field="rpm" data-lut-file="${escAttr(filename)}" onchange="updateLutChartForFile(this.dataset.lutFile)"></td>
+    <td><input type="number" value="${last.power+10}" data-field="power" data-lut-file="${escAttr(filename)}" onchange="updateLutChartForFile(this.dataset.lutFile)"></td>
+    <td><button class="btn-del" data-lut-file="${escAttr(filename)}" onclick="deleteLutRow(this,this.dataset.lutFile)">x</button></td>`
+  tbody.appendChild(tr)
+  drawLutChartForFile(filename)
+}
+
+function deleteLutRow(btn, filename) {
+  const row = btn.closest('tr')
+  if (row) row.remove()
+  drawLutChartForFile(filename)
+}
+
+function normalizeLut(filename) {
+  const points = getLutPoints(filename)
+  if (points.length===0) return
+  const maxP = Math.max(...points.map(p=>p.power))
+  if (maxP===0) return
+  const wrap = findLutWrap(filename)
+  if (!wrap) return
+  const inputs = wrap.querySelectorAll('input[data-field="power"]')
+  for (const inp of inputs) { const v=parseFloat(inp.value); if(!isNaN(v)) inp.value=Math.round(v/maxP*100) }
+  drawLutChartForFile(filename)
+}
+
+async function applyLut(filename) {
+  const points = getLutPoints(filename)
+  points.sort((a,b) => a.rpm-b.rpm)
+  const content = points.map(p => p.rpm+'|'+p.power).join('\n')
+  try {
+    await api('/api/edit', {method:'POST', body:JSON.stringify({name:filename, content})})
+    state.changedFiles.add(filename)
+    updateBadges(); renderCatNav()
+  } catch(e) {}
+}
+
+async function reloadLut(filename) {
+  try {
+    const data = await api('/api/file?name='+encodeURIComponent(filename))
+    const wrap = findLutWrap(filename)
+    if (wrap && wrap.parentElement) {
+      const card = wrap.closest('.lut-card')
+      if (card) {
+        card.outerHTML = renderLutCard(filename, data.content)
+        setTimeout(() => drawLutChartForFile(filename), 80)
+      }
+    }
+  } catch(e) {}
+}
+
+// ===== ALL FILES MODE =====
+function renderAllFiles() {
+  let html = `<div class="cat-header"><span class="cat-title">📁 All Files</span><span class="cat-files">${state.files.length} file${state.files.length!==1?'s':''}</span></div>`
+  html += `<div class="file-grid">`
+  for (const f of state.files) {
+    const icon = f.endsWith('.lut') ? '📊' : f.endsWith('.ini') ? '⚙️' : '📄'
+    const changed = state.changedFiles.has(f) ? ' changed' : ''
+    html += `<div class="file-card${changed}" data-file="${escAttr(f)}" onclick="selectFile(this.dataset.file)"><span class="file-icon">${icon}</span><span>${escHtml(f)}</span></div>`
+  }
+  html += `</div>`
+  document.getElementById('editor-area').innerHTML = html
+}
+
+async function selectFile(filename) {
+  try {
+    const data = await api('/api/file?name='+encodeURIComponent(filename))
+    let html = `<button class="back-btn" onclick="selectCategory('all')">← Back to All Files</button>`
+    html += `<div class="cat-header"><span class="cat-title">${escHtml(filename)}</span></div>`
+    if (data.is_lut) html += renderLutCard(filename, data.content)
+    else html += renderIniCard(filename, data.content)
+    document.getElementById('editor-area').innerHTML = html
+    if (data.is_lut) setTimeout(() => drawLutChartForFile(filename), 80)
+  } catch(e) {}
+}
+
+// ===== SAVE / UNDO =====
+function showSupport() {
+  const overlay = document.createElement('div')
+  overlay.className = 'modal-overlay'
+  overlay.style.display = 'flex'
+  overlay.innerHTML = `<div class="modal" style="text-align:center">
+    <h3>❤️ Support Wagner</h3>
+    <p style="font-size:13px;color:var(--text)">Telegram: <a href="https://t.me/wagnerbtc" target="_blank" style="color:var(--accent);font-size:15px;text-decoration:none;font-weight:700">@wagnerbtc</a></p>
+    <p style="font-size:11px;color:var(--text2)">Questions, bug reports, donations — reach out.</p>
+    <div class="modal-actions" style="justify-content:center">
+      <button class="btn-primary" onclick="window.open('https://t.me/wagnerbtc','_blank')">Open Telegram</button>
+      <button class="btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">Close</button>
+    </div>
+  </div>`
+  document.body.appendChild(overlay)
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+}
+
+async function actionSave() {
+  if (!state.path) return alert('No file opened')
+  try {
+    await api('/api/save', {method:'POST', body:JSON.stringify({action:'save'})})
+    state.changedFiles = new Set()
+    updateBadges(); renderCatNav()
+    if (state.currentCat) selectCategory(state.currentCat)
+  } catch(e) {}
+}
+
+async function actionUndo() {
+  if (!state.path || state.changedFiles.size === 0) return
+  try {
+    await api('/api/undo')
+    state.changedFiles = new Set()
+    updateBadges(); renderCatNav()
+    if (state.currentCat) selectCategory(state.currentCat)
+  } catch(e) {}
+}
+
+async function actionReset() {
+  if (!state.path) return alert('No file opened')
+  let restoreOriginal = false
+  try {
+    const st = await api('/api/state')
+    if (st.changed_count > 0) {
+      if (!confirm('Discard unsaved changes and reload from disk?')) return
+    }
+    const bakPath = state.path + '.bak'
+    const r = await fetch(bakPath, {method:'HEAD'})
+    if (r.ok) {
+      restoreOriginal = confirm('Original backup found (' + state.path + '.bak).\n\nRestore from original backup? This will revert ALL edits.')
+    }
+    const data = await api('/api/reset', {method:'POST', body:JSON.stringify({restore_original: restoreOriginal})})
+    state.path = data.path
+    state.files = data.files
+    state.carName = data.car_name
+    state.info = data.info
+    state.changedFiles = new Set()
+    state.fullFileData = {}
+    document.getElementById('filePath').textContent = data.path
+    updateBadges(); renderCatNav()
+    selectCategory('overview')
+    alert(restoreOriginal ? 'Restored from original backup.' : 'Reloaded from disk.')
+  } catch(e) {}
+}
+
+// ===== BADGES =====
+function updateBadges() {
+  const el = document.getElementById('infoBadges')
+  let html = ''
+  if (state.info.mass) html += `<span class="badge">${state.info.mass} kg</span>`
+  if (state.info.limiter) html += `<span class="badge">${state.info.limiter} RPM</span>`
+  if (state.info.power_peak) html += `<span class="badge">${state.info.power_peak} kW</span>`
+  if (state.changedFiles.size > 0) html += `<span class="badge change">${state.changedFiles.size} changed</span>`
+  el.innerHTML = html
+}
+
+// ===== UTILS =====
+function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function escJS(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'") }
+
+// ===== TOOLTIP =====
+function showTooltip(el, e) {
+  const desc = el.dataset.desc
+  if (!desc) return
+  const tt = document.getElementById('tooltip')
+  tt.textContent = desc
+  tt.classList.add('show')
+  const x = e.clientX + 14, y = e.clientY + 14
+  tt.style.left = Math.min(x, window.innerWidth - tt.offsetWidth - 10) + 'px'
+  tt.style.top = Math.min(y, window.innerHeight - tt.offsetHeight - 10) + 'px'
+}
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('show')
+}
+document.addEventListener('mousemove', e => {
+  const tt = document.getElementById('tooltip')
+  if (tt.classList.contains('show')) {
+    const x = e.clientX + 14, y = e.clientY + 14
+    tt.style.left = Math.min(x, window.innerWidth - tt.offsetWidth - 10) + 'px'
+    tt.style.top = Math.min(y, window.innerHeight - tt.offsetHeight - 10) + 'px'
+  }
+})
+
+// ===== FIRST RUN =====
+async function checkFirstRun() {
+  if (!window.pywebview) return
+  try {
+    const isFirst = await window.pywebview.api.is_first_run()
+    if (isFirst && await window.pywebview.api.should_register()) {
+      document.getElementById('modalFirstRun').style.display = 'flex'
+    }
+  } catch(e) {}
+}
+async function registerShell() {
+  try { await window.pywebview.api.register_shell() } catch(e) {}
+  document.getElementById('modalFirstRun').style.display = 'none'
+}
+function skipRegistration() {
+  document.getElementById('modalFirstRun').style.display = 'none'
+}
+
+// ===== DRAG & DROP =====
+document.addEventListener('dragover', e => {
+  e.preventDefault()
+  const dz = document.getElementById('dropZone')
+  if (dz) dz.classList.add('drag-over')
+})
+document.addEventListener('dragleave', e => {
+  const dz = document.getElementById('dropZone')
+  if (dz) dz.classList.remove('drag-over')
+})
+document.addEventListener('drop', async e => {
+  e.preventDefault()
+  const dz = document.getElementById('dropZone')
+  if (dz) dz.classList.remove('drag-over')
+  const file = e.dataTransfer.files[0]
+  if (file && file.path && file.path.toLowerCase().endsWith('.acd')) {
+    await openFile(file.path)
+  }
+})
+
+// ===== INIT =====
+async function init() {
+  checkFirstRun()
+  let initial = window._INITIAL_FILE || ''
+  try {
+    const apiVal = await window.pywebview.api.get_initial_file()
+    if (apiVal) initial = apiVal
+  } catch(e) {}
+  if (initial) await openFile(initial)
+}
+init()
+</script>
+</body>
+</html>
